@@ -53,6 +53,9 @@ func main() {
 	dg.Identify.Properties.OS = "windows"
 	dg.Identify.Properties.Browser = Browser
 
+	dg.AddHandler(readyEvent)
+	dg.AddHandler(messageCreate)
+
 	if err := dg.Open(); err != nil {
 		withTimeFail("[x] Error opening connection," + err.Error())
 		// if strings.HasPrefix(err.Error(), "websocket: close 4004") {
@@ -62,11 +65,7 @@ func main() {
 		return
 	}
 
-	dg.UpdateStatusComplex(discordgo.UpdateStatusData{
-		Status: "dnd",
-		AFK:    false,
-	})
-	dg.AddHandler(messageCreate)
+	dg.UpdateStatusComplex(config.Status)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
@@ -74,37 +73,44 @@ func main() {
 }
 
 func printMessageLog(s *discordgo.Session, m *discordgo.MessageCreate) {
-	guildName := ""
+	guildName := "<blue>[DM]</>"
+	userName := m.Author.Username
 
-	// in dm
-	if guildId := m.GuildID; guildId == "" {
-		return
-	} else if guild, _ := s.State.Guild(guildId); guild != nil {
-		guildName = guild.Name
+	if guild, _ := s.State.Guild(m.GuildID); guild != nil {
+		guildName = "<cyan>[" + html.EscapeString(guild.Name) + "]</>"
+	}
+	if member := m.Member; member != nil && member.Nick != "" {
+		userName = member.Nick
 	}
 
-	msg := "<cyan>[" + html.EscapeString(guildName) + "]</>\t "
-	msg += "<yellow><" + html.EscapeString(m.Author.Username) + "></>\t "
+	msg := guildName + "\t "
+	msg += "<yellow><" + html.EscapeString(userName) + "></>\t "
 	msg += "<gray>" + html.EscapeString(strings.ReplaceAll(m.Content, "\n", "\n\t\t")) + "</>"
 	withTimeLog(msg)
 }
 
+func readyEvent(s *discordgo.Session, m *discordgo.Ready) {
+	withTimeLog("Logged in as " + m.User.Username)
+}
+
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	guildID := m.GuildID
-
-	// in dm
-	if !config.DMEnable && guildID == "" {
-		return
-	}
-	if contains[string]([]string{}, guildID) {
-		return
-	}
 
 	// Already own Nitro
 	if s.State.User.PremiumType != 0 {
 		if !m.Author.Bot {
 			printMessageLog(s, m)
 		}
+		return
+	}
+
+	// in dm
+	if !config.DMEnable && guildID == "" {
+		printMessageLog(s, m)
+		return
+	}
+	if contains[string]([]string{}, guildID) {
+		printMessageLog(s, m)
 		return
 	}
 

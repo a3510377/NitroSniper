@@ -5,15 +5,17 @@ import (
 	"errors"
 	"os"
 	"path"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 const ConfigFilePath = "data/config.json"
 
 type Config struct {
-	Token            string   `json:"token"`
-	Status           any      `json:"status"`
-	DMEnable         bool     `json:"dm_enable"`
-	BlacklistServers []string `json:"blacklist_servers"`
+	Token            string                     `json:"token"`
+	Status           discordgo.UpdateStatusData `json:"status"`
+	DMEnable         bool                       `json:"dm_enable"`
+	BlacklistServers []string                   `json:"blacklist_servers"`
 }
 
 func ReadConfig() (config Config, error error) {
@@ -37,9 +39,9 @@ func ReadConfig() (config Config, error error) {
 func NewConfig() Config {
 	return Config{
 		Token: "",
-		Status: map[string]any{
-			"status": "dnd",
-			"afk":    false,
+		Status: discordgo.UpdateStatusData{
+			Status: "dnd",
+			AFK:    false,
 		},
 		DMEnable:         false,
 		BlacklistServers: []string{},
